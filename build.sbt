@@ -30,14 +30,14 @@ assemblyMergeStrategy in assembly := {
   case PathList("META-INF", "maven","com.aerospike","aerospike-client", "pom.properties") =>
     MergeStrategy.discard
   case PathList("META-INF", xs @ _*) =>
-    (xs map {_.toLowerCase}) match {
+    xs.map(_.toLowerCase) match {
       case ("manifest.mf" :: Nil) | ("index.list" :: Nil) | ("dependencies" :: Nil) =>
         MergeStrategy.discard
-      case ps @ (x :: xs) if ps.last.endsWith(".sf") || ps.last.endsWith(".dsa") =>
+      case ps @ (x :: _) if ps.last.endsWith(".sf") || ps.last.endsWith(".dsa") =>
         MergeStrategy.discard
-      case "plexus" :: xs =>
+      case "plexus" :: _ =>
         MergeStrategy.discard
-      case "services" :: xs =>
+      case "services" :: _ =>
         MergeStrategy.filterDistinctLines
       case ("spring.schemas" :: Nil) | ("spring.handlers" :: Nil) =>
         MergeStrategy.filterDistinctLines
