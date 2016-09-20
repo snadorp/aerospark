@@ -1,11 +1,8 @@
 package com.aerospike.spark.sql
 
-import scala.collection.JavaConversions._
-
 import org.apache.spark._
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql._
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.sources.EqualTo
 import org.apache.spark.sql.sources.Filter
@@ -19,7 +16,6 @@ import org.apache.spark.sql.sources.StringEndsWith
 import org.apache.spark.sql.types.StructType
 
 import com.aerospike.client.Value
-import com.aerospike.client.cluster.Node
 import com.aerospike.client.query.Statement
 import com.aerospike.helper.query._
 import com.aerospike.helper.query.Qualifier.FilterOperation
@@ -27,8 +23,7 @@ import org.apache.spark.sql.types.ArrayType
 import org.apache.spark.sql.types.MapType
 
 
-case class AerospikePartition(index: Int,
-  host: String) extends Partition()
+case class AerospikePartition(index: Int, host: String) extends Partition
 
 /**
   * This is an Aerospike specific RDD to contains the results
@@ -48,20 +43,17 @@ class KeyRecordRDD(
 
 
   override protected def getPartitions: Array[Partition] = {
-    {
-      var client = AerospikeConnection.getClient(aerospikeConfig)
-      var nodes = client.getNodes
-      var count = 0
-      var parts = new Array[Partition](nodes.size)
-      nodes.foreach { node =>
-        val name = node.getName
-        parts(count) = new AerospikePartition(count, name).asInstanceOf[Partition]
-        count += 1
-      }
-      parts
-    }.toArray
+    val client = AerospikeConnection.getClient(aerospikeConfig)
+    val nodes = client.getNodes
+    var count = 0
+    val parts = new Array[Partition](nodes.size)
+    nodes.foreach { node =>
+      val name = node.getName
+      parts(count) = AerospikePartition(count, name).asInstanceOf[Partition]
+      count += 1
+    }
+    parts
   }
-
 
   override def compute(split: Partition, context: TaskContext): Iterator[Row] = {
     val partition: AerospikePartition = split.asInstanceOf[AerospikePartition]
@@ -81,23 +73,19 @@ class KeyRecordRDD(
 
     val queryEngine = AerospikeConnection.getQueryEngine(aerospikeConfig)
     val client = AerospikeConnection.getClient(aerospikeConfig)
-    val node = client.getNode(partition.host);
+    val node = client.getNode(partition.host)
 
-    var kri: KeyRecordIterator = null
-
-    if (filters != null && filters.length > 0){
+    val kri = if (filters != null && filters.length > 0){
       val qualifiers = filters.map { phil => filterToQualifier(phil) }
-      kri = queryEngine.select(stmt, false, node, qualifiers: _*)
+      queryEngine.select(stmt, false, node, qualifiers: _*)
     } else {
-      kri = queryEngine.select(stmt, false, node)
+      queryEngine.select(stmt, false, node)
     }
 
     context.addTaskCompletionListener(context => {
       logInfo(s"KeyRecordIterator closed for Aerospike host $partHost")
       kri.close()
     })
-
-
     new RowIterator(kri, schema, aerospikeConfig, requiredColumns)
   }
 
@@ -148,47 +136,44 @@ class KeyRecordRDD(
   * This class implement a Spark SQL row iterator.
   * It is used to iterate through the Record/Result set from the Aerospike query
   */
-class RowIterator[Row] (val kri: KeyRecordIterator, schema: StructType, aerospikeConfig: AerospikeConfig, requiredColumns: Array[String] = null) extends Iterator[org.apache.spark.sql.Row] with Logging{
+class RowIterator[Row] (val kri: KeyRecordIterator, schema: StructType, config: AerospikeConfig, requiredColumns: Array[String] = null)
+  extends Iterator[org.apache.spark.sql.Row] with Logging {
 
 
   def hasNext: Boolean = {
-    kri.hasNext()
+    kri.hasNext
   }
 
   def next: org.apache.spark.sql.Row = {
     val kr = kri.next()
 
     val digest: Array[Byte] = kr.key.digest
-    val digestName: String = aerospikeConfig.digestColumn()
+    val digestName: String = config.digestColumn()
 
     val userKey: Value = kr.key.userKey
-    val userKeyName: String = aerospikeConfig.keyColumn()
+    val userKeyName: String = config.keyColumn()
 
     val expiration: Int = kr.record.expiration
-    val expirationName: String = aerospikeConfig.expiryColumn()
+    val expirationName: String = config.expiryColumn()
 
     val generation: Int = kr.record.generation
-    val generationName: String = aerospikeConfig.generationColumn()
+    val generationName: String = config.generationColumn()
 
     val ttl: Int = kr.record.getTimeToLive
-    val ttlName: String = aerospikeConfig.ttlColumn()
+    val ttlName: String = config.ttlColumn()
 
-    var fields = scala.collection.mutable.MutableList[Any]()
-
-    requiredColumns.foreach { field =>
+    val fields = requiredColumns.map { field =>
       val value = field match {
         case x if x.equals(digestName) => digest
-        case x if x.equals(userKeyName) => if (userKey != null) userKey else null
+        case x if x.equals(userKeyName) => userKey
         case x if x.equals(expirationName) => expiration
         case x if x.equals(generationName) => generation
         case x if x.equals(ttlName) => ttl
         case _ => TypeConverter.binToValue(schema, (field, kr.record.bins.get(field)))
       }
       logDebug(s"$field = $value")
-      fields += value
+      value
     }
-
-    val row = Row.fromSeq(fields.toSeq)
-    row
+    Row.fromSeq(fields)
   }
 }

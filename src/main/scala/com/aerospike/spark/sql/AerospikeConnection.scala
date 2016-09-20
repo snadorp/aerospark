@@ -24,30 +24,27 @@ object AerospikeConnection {
       newEngine
     })
   }
+
   def getClient(config: AerospikeConfig) : AerospikeClient = synchronized{
-    val host = config.get(AerospikeConfig.SeedHost);
-    val port = config.get(AerospikeConfig.Port);
-    var client = clientCache.getOrElse(s"$host:$port", {
-      newClient(config)
-    })
-    if (!client.isConnected())
+    val host = config.get(AerospikeConfig.SeedHost)
+    val port = config.get(AerospikeConfig.Port)
+    var client = clientCache.getOrElse(s"$host:$port", newClient(config))
+    if (!client.isConnected)
       client = newClient(config)
     client
   }
 
   private def newClient(config: AerospikeConfig): AerospikeClient = {
 
-    val host = config.get(AerospikeConfig.SeedHost).toString();
-    val portProperty = config.get(AerospikeConfig.Port);
-    val port = portProperty match {
-      case _:Int => portProperty.asInstanceOf[Int]
-      case _:String => portProperty.asInstanceOf[String].toInt
+    val host = config.get(AerospikeConfig.SeedHost).toString
+    val port = config.get(AerospikeConfig.Port) match {
+      case i: Int => i
+      case s: String => s.toInt
       case None => 3000
     }
-    val timeoutProperty = config.get(AerospikeConfig.TimeOut)
-    val timeOut:Int = timeoutProperty match {
-      case _:Int => timeoutProperty.asInstanceOf[Int]
-      case _:String => timeoutProperty.asInstanceOf[String].toInt
+    val timeOut:Int = config.get(AerospikeConfig.TimeOut) match {
+      case i: Int => i
+      case s: String => s.toInt
       case None => 1000
     }
     val clientPolicy = new ClientPolicy
@@ -61,11 +58,9 @@ object AerospikeConnection {
     newClient.scanPolicyDefault.timeout = timeOut
     newClient.queryPolicyDefault.timeout = timeOut
 
-    val nodes = newClient.getNodes
-    for (node <- nodes) {
-      clientCache += (node.getHost.toString() -> newClient)
+    for (node <- newClient.getNodes) {
+      clientCache += (node.getHost.toString -> newClient)
     }
     newClient
   }
-
 }

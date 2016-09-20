@@ -22,6 +22,8 @@ libraryDependencies ++= Seq(
 
 resolvers ++= Seq("Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository")
 
+cancelable in Global := true
+
 assemblyMergeStrategy in assembly := {
   case x if Assembly.isConfigFile(x) =>
     MergeStrategy.concat

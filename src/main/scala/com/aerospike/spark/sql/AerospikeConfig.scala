@@ -3,6 +3,7 @@ package com.aerospike.spark.sql
 import scala.collection.immutable.Map
 import com.aerospike.client.policy.CommitLevel
 import com.aerospike.client.policy.GenerationPolicy
+
 /**
   * this class is a container for the properties used during the
   * the read and save functions
@@ -10,14 +11,14 @@ import com.aerospike.client.policy.GenerationPolicy
 class AerospikeConfig private(val properties: Map[String, Any]) extends Serializable {
 
   def get(key: String): Any =
-    properties.get(key.toLowerCase()).getOrElse(notFound(key))
+    properties.getOrElse(key.toLowerCase(), notFound(key))
 
   def getIfNotEmpty(key: String, defaultVal: Any): Any = {
-    val proposed = properties.get(key.toLowerCase()).getOrElse(defaultVal)
+    properties.getOrElse(key.toLowerCase(), defaultVal)
       match {
       case n: Number => n.longValue
       case b: Boolean => if(b) 1 else 0
-      case s: String  => if (s.isEmpty()) defaultVal else s
+      case s: String  => if (s.isEmpty) defaultVal else s
       case _ => null
     }
   }
@@ -65,9 +66,8 @@ class AerospikeConfig private(val properties: Map[String, Any]) extends Serializ
     get(AerospikeConfig.TTLColumn).asInstanceOf[String]
   }
 
-
-  override def toString(): String = {
-    var buff = new StringBuffer("[")
+  override def toString: String = {
+    val buff = new StringBuffer("[")
     properties.map(f => {
       buff.append("{")
       buff.append(f._1)
@@ -76,16 +76,17 @@ class AerospikeConfig private(val properties: Map[String, Any]) extends Serializ
       buff.append("}")
     })
     buff.append("]")
-    buff.toString()
+    buff.toString
   }
 
   private def notFound[T](key: String): T =
     throw new IllegalStateException(s"Config item $key not specified")
-
-
 }
 
 object AerospikeConfig {
+
+  final val DEFAULT_READ_PURPOSE = "spark_read"
+  final val DEFAULT_WRITE_PURPOSE = "spark_write"
 
   private val defaultValues = scala.collection.mutable.Map[String, Any](
     AerospikeConfig.SeedHost -> "127.0.0.1",
@@ -98,9 +99,6 @@ object AerospikeConfig {
     AerospikeConfig.ExpiryColumn -> "__expiry",
     AerospikeConfig.GenerationColumn -> "__generation",
     AerospikeConfig.TTLColumn -> "__ttl")
-
-  final val DEFAULT_READ_PURPOSE = "spark_read"
-  final val DEFAULT_WRITE_PURPOSE = "spark_write"
 
   val SeedHost = "aerospike.seedhost"
   defineProperty(SeedHost, "127.0.0.1")
@@ -150,7 +148,6 @@ object AerospikeConfig {
   val TTLColumn = "aerospike.ttlColumn"
   defineProperty(TTLColumn, "__ttl")
 
-
   private def defineProperty(key: String, defaultValue: Any) : Unit = {
     val lowerKey = key.toLowerCase()
     if(defaultValues.contains(lowerKey))
@@ -160,15 +157,14 @@ object AerospikeConfig {
   }
 
   def newConfig(seedHost:String, port: Any, timeOut:Any ): AerospikeConfig = {
-
     newConfig(Map(AerospikeConfig.SeedHost -> seedHost,
       AerospikeConfig.Port -> port,
       AerospikeConfig.TimeOut -> timeOut))
   }
 
 
-  def newConfig(props: Map[String, Any] = null): AerospikeConfig = {
-    if (props != null) {
+  def newConfig(props: Map[String, Any] = Map.empty): AerospikeConfig = {
+    if (props.nonEmpty) {
       val ciProps = props.map(kv => kv.copy(_1 = kv._1.toLowerCase))
 
       ciProps.keys.filter(_.startsWith("aerospike.")).foreach { x =>
