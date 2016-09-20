@@ -1,7 +1,6 @@
 package com.aerospike.spark.sql
 
 import scala.collection.JavaConversions._
-import org.apache.spark.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
@@ -13,12 +12,13 @@ import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.types.IntegerType
 import com.aerospike.client.Value
 import com.aerospike.client.query.Statement
+import com.typesafe.scalalogging.slf4j.LazyLogging
 /**
   * This class infers the schema used by the DataFrame
   * and creates an instance of @see com.aerospike.spark.sql.KeyRecordRDD
   */
 class AerospikeRelation(config: AerospikeConfig, userSchema: StructType)(@transient val sqlContext: SQLContext)
-    extends BaseRelation with TableScan with PrunedFilteredScan with Logging with Serializable {
+    extends BaseRelation with TableScan with PrunedFilteredScan with LazyLogging with Serializable {
 
   Value.UseDoubleType = true
   var schemaCache: StructType = _
@@ -44,7 +44,7 @@ class AerospikeRelation(config: AerospikeConfig, userSchema: StructType)(@transi
         sample.flatMap { keyRecord =>
           keyRecord.record.bins.map { case (binName, binVal) =>
             val field = TypeConverter.valueToSchema(binName -> binVal)
-            logDebug(s"Schema - Bin:$binName, Value:$binVal, Field:$field")
+            logger.debug(s"Schema - Bin:$binName, Value:$binVal, Field:$field")
             binName -> field
           }
         }.toMap

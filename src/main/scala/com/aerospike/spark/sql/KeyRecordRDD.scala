@@ -4,21 +4,13 @@ import org.apache.spark._
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.sources.EqualTo
-import org.apache.spark.sql.sources.Filter
-import org.apache.spark.sql.sources.GreaterThan
-import org.apache.spark.sql.sources.GreaterThanOrEqual
-import org.apache.spark.sql.sources.LessThan
-import org.apache.spark.sql.sources.LessThanOrEqual
-import org.apache.spark.sql.sources.StringStartsWith
-import org.apache.spark.sql.sources.StringEndsWith
-
+import org.apache.spark.sql.sources.{EqualTo, Filter, GreaterThan, GreaterThanOrEqual, IsNotNull, LessThan, LessThanOrEqual, StringEndsWith, StringStartsWith}
 import org.apache.spark.sql.types.StructType
-
 import com.aerospike.client.Value
 import com.aerospike.client.query.Statement
 import com.aerospike.helper.query._
 import com.aerospike.helper.query.Qualifier.FilterOperation
+import com.typesafe.scalalogging.slf4j.LazyLogging
 import org.apache.spark.sql.types.ArrayType
 import org.apache.spark.sql.types.MapType
 
@@ -39,8 +31,7 @@ class KeyRecordRDD(
   val schema: StructType = null,
   val requiredColumns: Array[String] = null,
   val filters: Array[Filter] = null
-) extends RDD[Row](sc, Seq.empty) with Logging {
-
+  ) extends RDD[Row](sc, Seq.empty) with LazyLogging {
 
   override protected def getPartitions: Array[Partition] = {
     val client = AerospikeConnection.getClient(aerospikeConfig)
@@ -116,7 +107,12 @@ class KeyRecordRDD(
     case StringEndsWith(attribute, value) =>
       new Qualifier(attribute, FilterOperation.ENDS_WITH, Value.get(value))
 
-    case _ => null
+    case IsNotNull(attribute) =>
+      new Qualifier(attribute, FilterOperation.NOTEQ, Value.getAsNull)
+
+    case _ =>
+      logger.debug(s"Not matching filter: ${filter.toString}")
+      null
   }
 
   private def isMap(attribute: String) = {
@@ -137,7 +133,7 @@ class KeyRecordRDD(
   * It is used to iterate through the Record/Result set from the Aerospike query
   */
 class RowIterator[Row] (val kri: KeyRecordIterator, schema: StructType, config: AerospikeConfig, requiredColumns: Array[String] = null)
-  extends Iterator[org.apache.spark.sql.Row] with Logging {
+  extends Iterator[org.apache.spark.sql.Row] with LazyLogging {
 
 
   def hasNext: Boolean = {
@@ -171,7 +167,7 @@ class RowIterator[Row] (val kri: KeyRecordIterator, schema: StructType, config: 
         case x if x.equals(ttlName) => ttl
         case _ => TypeConverter.binToValue(schema, (field, kr.record.bins.get(field)))
       }
-      logDebug(s"$field = $value")
+      logger.debug(s"$field = $value")
       value
     }
     Row.fromSeq(fields)

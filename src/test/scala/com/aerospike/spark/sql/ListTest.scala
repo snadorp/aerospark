@@ -3,11 +3,7 @@ package com.aerospike.spark.sql
 import java.util
 
 import scala.util.Random
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.types.ArrayType
 import org.apache.spark.sql.types.IntegerType
@@ -24,32 +20,17 @@ import com.aerospike.client.Value
 import com.aerospike.client.policy.WritePolicy
 
 
-class ListTest extends FlatSpec with BeforeAndAfter{
+class ListTest extends FlatSpec with BeforeAndAfter with SparkTest {
+
+  val config = AerospikeConfig.newConfig(Globals.seedHost, 3000, 1000)
   var client: AerospikeClient = _
-  var conf: SparkConf = _
-  var sc:SparkContext = _
-  var sqlContext: SQLContext = _
-  var thingsDF: DataFrame = _
   val set = "lists"
   val listBin = "list-of-things"
 
   val TEST_COUNT = 100
 
-  val config = AerospikeConfig.newConfig(Globals.seedHost, 3000, 1000)
-
   before {
-    conf = new SparkConf().setMaster("local[*]")
-      .setAppName("Aerospike Relation Tests")
-      .set("spark.driver.allowMultipleContexts", "true")
-    sc = new SparkContext(conf)
-    sqlContext = new SQLContext(sc)
     createTestData()
-  }
-
-  after {
-    if (sc != null) {
-      sc.stop()
-    }
   }
 
   def createTestData(): Unit = {
@@ -74,7 +55,7 @@ class ListTest extends FlatSpec with BeforeAndAfter{
   behavior of "Aerospike List"
 
   it should "read list data" in {
-    thingsDF = sqlContext.read.
+    val thingsDF = sqlContext.read.
       format("com.aerospike.spark.sql").
       option("aerospike.seedhost", Globals.seedHost).
       option("aerospike.port", Globals.port.toString).

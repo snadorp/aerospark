@@ -6,18 +6,23 @@ version := "1.1.5"
 
 organization := "com.aerospike"
 
-scalaVersion := "2.10.6"
+crossScalaVersions := Seq("2.10.6", "2.11.8")
+
+scalaVersion := "2.11.8"
 
 javacOptions ++= Seq("-source", "1.7", "-target", "1.7")
 
 parallelExecution in test := false
 
+fork in test := true
+
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core"            % "1.6.0" % Provided,
-  "org.apache.spark" %% "spark-sql"             % "1.6.0" % Provided,
-  "com.aerospike"    %  "aerospike-client"      % "3.2.4",
-  "com.aerospike"    %  "aerospike-helper-java" % "1.0.6",
-  "org.scalatest"    %% "scalatest"             % "2.2.1" % Test
+  "org.apache.spark"           %% "spark-core"            % "2.0.0" % Provided,
+  "org.apache.spark"           %% "spark-sql"             % "2.0.0" % Provided,
+  "com.aerospike"              %  "aerospike-client"      % "3.2.4",
+  "com.aerospike"              %  "aerospike-helper-java" % "1.0.6",
+  "com.typesafe.scala-logging" %% "scala-logging-slf4j"   % "2.1.2",
+  "org.scalatest"              %% "scalatest"             % "2.2.1" % Test
 )
 
 resolvers ++= Seq("Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository")

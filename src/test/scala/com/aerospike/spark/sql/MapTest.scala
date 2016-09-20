@@ -2,9 +2,6 @@ package com.aerospike.spark.sql
 
 import java.util
 
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
-import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.scalatest.FlatSpec
 import com.aerospike.client.AerospikeClient
@@ -23,35 +20,18 @@ import com.aerospike.client.policy.WritePolicy
 
 import scala.util.Random
 
-import org.apache.spark.sql.SQLContext
 
+class MapTest extends FlatSpec with BeforeAndAfter with SparkTest {
 
-class MapTest extends FlatSpec with BeforeAndAfter{
+  val config = AerospikeConfig.newConfig(Globals.seedHost, 3000, 1000)
   var client: AerospikeClient = _
-  var conf: SparkConf = _
-  var sc:SparkContext = _
-  var sqlContext: SQLContext = _
-  var thingsDF: DataFrame = _
   val set = "maps"
   val mapBin = "map-of-things"
 
   val TEST_COUNT = 100
 
-  val config = AerospikeConfig.newConfig(Globals.seedHost, 3000, 1000)
-
   before {
-    conf = new SparkConf().setMaster("local[*]")
-      .setAppName("Aerospike Relation Tests")
-      .set("spark.driver.allowMultipleContexts", "true")
-    sc = new SparkContext(conf)
-    sqlContext = new SQLContext(sc)
     createTestData()
-  }
-
-  after {
-    if (sc != null) {
-      sc.stop()
-    }
   }
 
   def createTestData(): Unit = {
@@ -77,7 +57,7 @@ class MapTest extends FlatSpec with BeforeAndAfter{
   behavior of "Aerospike Map"
 
   it should "read map data" in {
-    thingsDF = sqlContext.read.
+    val thingsDF = sqlContext.read.
       format("com.aerospike.spark.sql").
       option("aerospike.seedhost", Globals.seedHost).
       option("aerospike.port", Globals.port.toString).

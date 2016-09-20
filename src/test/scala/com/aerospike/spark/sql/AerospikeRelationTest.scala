@@ -1,9 +1,6 @@
 package com.aerospike.spark.sql
 
-import org.apache.spark.SparkConf
-import org.apache.spark.SparkContext
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.types.StructType
 import org.scalatest.FlatSpec
 
@@ -22,29 +19,14 @@ import org.apache.spark.sql.SaveMode
 import com.aerospike.client.policy.WritePolicy
 
 
-class AerospikeRelationTest extends FlatSpec with BeforeAndAfter {
+class AerospikeRelationTest extends FlatSpec with BeforeAndAfter with SparkTest {
+  val config = AerospikeConfig.newConfig(Globals.seedHost, Globals.port, 10000)
   var client: AerospikeClient = _
-  var conf: SparkConf = _
-  var sc:SparkContext = _
-  var sqlContext: SQLContext = _
 
   val TEST_COUNT = 100
 
-  val config = AerospikeConfig.newConfig(Globals.seedHost, Globals.port, 10000)
-
   before {
-    conf = new SparkConf().setMaster("local[*]")
-      .setAppName("Aerospike Relation Tests")
-      .set("spark.driver.allowMultipleContexts", "true")
-    sc = new SparkContext(conf)
-    sqlContext = new SQLContext(sc)
     createTestData()
-  }
-
-  after {
-    if (sc != null) {
-      sc.stop()
-    }
   }
 
   def createTestData() = {

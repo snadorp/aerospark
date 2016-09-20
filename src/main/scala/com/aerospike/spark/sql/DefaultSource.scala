@@ -1,6 +1,5 @@
 package com.aerospike.spark.sql
 
-import org.apache.spark.Logging
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
@@ -9,7 +8,6 @@ import org.apache.spark.sql.sources.BaseRelation
 import org.apache.spark.sql.sources.CreatableRelationProvider
 import org.apache.spark.sql.sources.RelationProvider
 import org.apache.spark.sql.types.StructType
-
 import com.aerospike.client.policy.WritePolicy
 import com.aerospike.client.policy.RecordExistsAction
 import com.aerospike.client.Key
@@ -17,20 +15,18 @@ import com.aerospike.client.Value
 import com.aerospike.client.AerospikeException
 import com.aerospike.client.ResultCode
 import com.aerospike.client.policy.GenerationPolicy
-
+import com.typesafe.scalalogging.slf4j.LazyLogging
 
 /**
   * This class provides implementations to the Spark load and save functions
   */
-class DefaultSource extends RelationProvider with Serializable
-    with Logging
-    with CreatableRelationProvider{
+class DefaultSource extends RelationProvider with Serializable with LazyLogging with CreatableRelationProvider{
 
   override def createRelation(sqlContext: SQLContext, parameters: Map[String, String]): BaseRelation = {
     parameters.getOrElse(AerospikeConfig.SeedHost, sys.error(AerospikeConfig.SeedHost + " must be specified"))
     parameters.getOrElse(AerospikeConfig.Port, sys.error(AerospikeConfig.Port + " must be specified"))
     parameters.getOrElse(AerospikeConfig.NameSpace, sys.error(AerospikeConfig.NameSpace + " must be specified"))
-    logInfo("Creating Aerospike relation for " + AerospikeConfig.NameSpace +":"+ AerospikeConfig.SetName)
+    logger.info("Creating Aerospike relation for " + AerospikeConfig.NameSpace +":"+ AerospikeConfig.SetName)
     val conf = AerospikeConfig.newConfig(parameters)
     new AerospikeRelation(conf, null)(sqlContext)
   }
@@ -68,10 +64,10 @@ class DefaultSource extends RelationProvider with Serializable
       sys.error("Cannot use hasUpdateByKey and hasUpdateByDigest configuration together")
     }
 
-    logDebug("fetch client to save partition")
+    logger.debug("fetch client to save partition")
     val client = AerospikeConnection.getClient(config)
 
-    logDebug("creating write policy")
+    logger.debug("creating write policy")
 
     val policy = new WritePolicy(client.writePolicyDefault)
 
@@ -123,36 +119,36 @@ class DefaultSource extends RelationProvider with Serializable
             case SaveMode.ErrorIfExists =>
               ex.getResultCode match {
                 case ResultCode.KEY_EXISTS_ERROR =>
-                  logDebug(s"Key:$key Error:$message")
+                  logger.debug(s"Key:$key Error:$message")
                   throw ex
                 case _ =>
-                  logError(s"Key:$key Error:$message")
+                  logger.error(s"Key:$key Error:$message")
               }
 
             case SaveMode.Ignore =>
               ex.getResultCode match {
                 case ResultCode.KEY_EXISTS_ERROR =>
-                  logDebug(s"Ignoring existing Key:$key")
+                  logger.debug(s"Ignoring existing Key:$key")
                 case _ =>
-                  logError(s"Key:$key Error:$message")
+                  logger.error(s"Key:$key Error:$message")
                   throw ex
               }
 
             case SaveMode.Overwrite =>
-              logError(s"Key:$key Error:$message")
+              logger.error(s"Key:$key Error:$message")
               //throw ex
 
             case SaveMode.Append =>
               ex.getResultCode match {
                 case ResultCode.KEY_NOT_FOUND_ERROR =>
-                  logDebug(s"Ignoring missing Key:$key")
+                  logger.debug(s"Ignoring missing Key:$key")
                 case _ =>
-                  logError(s"Key:$key Error:$message")
+                  logger.debug(s"Key:$key Error:$message")
                   throw ex
               }
           }
       }
     }
-    logDebug(s"Completed writing partition of $counter rows")
+    logger.debug(s"Completed writing partition of $counter rows")
   }
 }
