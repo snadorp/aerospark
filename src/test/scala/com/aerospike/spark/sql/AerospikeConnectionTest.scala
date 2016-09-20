@@ -16,7 +16,7 @@ class AerospikeConnectionTest extends FlatSpec {
   var config: AerospikeConfig = _
 
   behavior of "AerospikeConnection"
-  
+
   it should " test Client witnout Spark" in {
     config = AerospikeConfig.newConfig(Globals.seedHost, Globals.port, 10000)
     var client = AerospikeConnection.getClient(config)
@@ -24,15 +24,15 @@ class AerospikeConnectionTest extends FlatSpec {
     for (i <- 1 to 100) {
       val key = new Key(Globals.namespace, "rdd-test", "rdd-test-"+i)
       client.put(null, key,
-         new Bin("one", i),
-         new Bin("two", "two:"+i),
-         new Bin("three", i.asInstanceOf[Double])
+        new Bin("one", i),
+        new Bin("two", "two:"+i),
+        new Bin("three", i.asInstanceOf[Double])
       )
       client.get(null, key)
       client.delete(null, key)
     }
   }
-  
+
   it should " test Client with Spark" in {
     conf = new SparkConf().setMaster("local[*]").setAppName("Aerospike RDD Tests")
     sc = new SparkContext(conf)
@@ -42,60 +42,60 @@ class AerospikeConnectionTest extends FlatSpec {
     for (i <- 1 to 100) {
       val key = new Key(Globals.namespace, "rdd-test", "rdd-test-"+i)
       client.put(null, key,
-         new Bin("one", i),
-         new Bin("two", "two:"+i),
-         new Bin("three", i.asInstanceOf[Double])
+        new Bin("one", i),
+        new Bin("two", "two:"+i),
+        new Bin("three", i.asInstanceOf[Double])
       )
     }
   }
-  
+
   it should " test Client with Spark and Config" in {
-    
+
     config = AerospikeConfig.newConfig(Globals.seedHost, Globals.port, 10000)
     var client = AerospikeConnection.getClient(config)
 
     for (i <- 1 to 100) {
       val key = new Key(Globals.namespace, "rdd-test", "rdd-test-"+i)
       client.put(null, key,
-         new Bin("one", i),
-         new Bin("two", "two:"+i),
-         new Bin("three", i.asInstanceOf[Double])
+        new Bin("one", i),
+        new Bin("two", "two:"+i),
+        new Bin("three", i.asInstanceOf[Double])
       )
     }
   }
   it should " test QueryEngine with spark" in {
-     var qe = AerospikeConnection.getQueryEngine(config)
-     
-     var stmt = new Statement()
-     stmt.setNamespace(Globals.namespace)
-     stmt.setSetName("rdd-test")
-     val kri = qe.select(stmt)
-     var count = 0
-     print("\t")
-     while (kri.hasNext())
-       //println(kri.next())
-       print(".")
-     qe.close()
-    
+    var qe = AerospikeConnection.getQueryEngine(config)
+
+    var stmt = new Statement()
+    stmt.setNamespace(Globals.namespace)
+    stmt.setSetName("rdd-test")
+    val kri = qe.select(stmt)
+    var count = 0
+    print("\t")
+    while (kri.hasNext())
+      //println(kri.next())
+      print(".")
+    qe.close()
+
   }
   it should " do it multiple time" in {
     for( a <- 1 to 10){
-     
-     val qe = AerospikeConnection.getQueryEngine(config)
-     
-     var stmt = new Statement()
-     stmt.setNamespace(Globals.namespace)
-     stmt.setSetName("rdd-test")
-     val kri = qe.select(stmt)
-     var count = 0
-     print("\t")
-     while (kri.hasNext())
-       //println(kri.next())
-       print(".")
+
+      val qe = AerospikeConnection.getQueryEngine(config)
+
+      var stmt = new Statement()
+      stmt.setNamespace(Globals.namespace)
+      stmt.setSetName("rdd-test")
+      val kri = qe.select(stmt)
+      var count = 0
+      print("\t")
+      while (kri.hasNext())
+        //println(kri.next())
+        print(".")
       qe.close()
-    println(s"\tIteration: $a")
+      println(s"\tIteration: $a")
     }
-    
+
   }
 
 }
