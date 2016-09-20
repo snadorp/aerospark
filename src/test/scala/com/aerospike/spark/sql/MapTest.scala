@@ -1,39 +1,29 @@
 package com.aerospike.spark.sql
+
+import java.util
+
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.SaveMode
-
 import org.scalatest.FlatSpec
-
 import com.aerospike.client.AerospikeClient
 import com.aerospike.client.Bin
 import com.aerospike.client.Key
 import com.aerospike.client.Value
 import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.types.ArrayType
 import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.LongType
 import org.apache.spark.sql.types.StringType
 import org.apache.spark.sql.types.MapType
-import org.apache.spark.sql.functions.lit
 import org.scalatest.BeforeAndAfter
 import org.apache.spark.sql.types.IntegerType
-import org.joda.time.format.DateTimeFormat
-import org.joda.time.DateTime
 import org.apache.spark.sql.SaveMode
-
-import org.apache.spark.sql.functions._
 import com.aerospike.client.policy.WritePolicy
-import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
-import java.util.ArrayList
-import org.apache.spark.sql.SQLContext
 
-import collection.JavaConversions._
-import java.util.HashMap
+import scala.util.Random
+
+import org.apache.spark.sql.SQLContext
 
 
 class MapTest extends FlatSpec with BeforeAndAfter{
@@ -55,8 +45,7 @@ class MapTest extends FlatSpec with BeforeAndAfter{
       .set("spark.driver.allowMultipleContexts", "true")
     sc = new SparkContext(conf)
     sqlContext = new SQLContext(sc)
-
-
+    createTestData()
   }
 
   after {
@@ -65,27 +54,27 @@ class MapTest extends FlatSpec with BeforeAndAfter{
     }
   }
 
-  behavior of "Aerospike Map"
-
-  it should "create test data" in {
+  def createTestData(): Unit = {
     client = AerospikeConnection.getClient(config)
     Value.UseDoubleType = true
     val wp = new WritePolicy()
     wp.expiration = 600 // expire data in 10 minutes
 
     // Create many records with values in a map
-    val rand = new Random(300);
+    val rand = new Random(300)
     for (i <- 1 to TEST_COUNT){
       val newKey = new Key(Globals.namespace, set, s"a-record-with-a-map-$i")
-      var aMap = new HashMap[String, Long]();
+      val aMap = new util.HashMap[String, Long]()
       for ( j <- 1 to TEST_COUNT){
         val newInt = rand.nextInt(200) + 250L
         aMap.put(s"index-$j", newInt)
       }
-      println(aMap)
-      client.put(wp, newKey, new Bin(mapBin, aMap));
+      //println(aMap)
+      client.put(wp, newKey, new Bin(mapBin, aMap))
     }
   }
+
+  behavior of "Aerospike Map"
 
   it should "read map data" in {
     thingsDF = sqlContext.read.
@@ -164,5 +153,4 @@ class MapTest extends FlatSpec with BeforeAndAfter{
     val tunrbullMap = tunrbull.getMap(mapBin)
     assert(tunrbullMap.get("to") == 2016L)
   }
-
 }

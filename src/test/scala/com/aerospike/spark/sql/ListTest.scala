@@ -1,18 +1,14 @@
 package com.aerospike.spark.sql
 
-import java.util.ArrayList
+import java.util
 
 import scala.util.Random
-
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.SaveMode
-import org.apache.spark.sql.functions._
-import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.types.ArrayType
 import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.types.LongType
@@ -21,15 +17,11 @@ import org.apache.spark.sql.types.StructField
 import org.apache.spark.sql.types.StructType
 import org.scalatest.BeforeAndAfter
 import org.scalatest.FlatSpec
-
 import com.aerospike.client.AerospikeClient
 import com.aerospike.client.Bin
 import com.aerospike.client.Key
 import com.aerospike.client.Value
 import com.aerospike.client.policy.WritePolicy
-
-
-import collection.JavaConverters._
 
 
 class ListTest extends FlatSpec with BeforeAndAfter{
@@ -51,7 +43,7 @@ class ListTest extends FlatSpec with BeforeAndAfter{
       .set("spark.driver.allowMultipleContexts", "true")
     sc = new SparkContext(conf)
     sqlContext = new SQLContext(sc)
-
+    createTestData()
   }
 
   after {
@@ -60,26 +52,26 @@ class ListTest extends FlatSpec with BeforeAndAfter{
     }
   }
 
-  behavior of "Aerospike List"
-
-  it should "create test data" in {
+  def createTestData(): Unit = {
     client = AerospikeConnection.getClient(config)
     Value.UseDoubleType = true
     val wp = new WritePolicy()
     wp.expiration = 600 // expire data in 10 minutes
 
     // Create many records with values in a list
-    val rand = new Random(300);
+    val rand = new Random(300)
     for (i <- 1 to TEST_COUNT){
       val newKey = new Key(Globals.namespace, set, s"a-record-with-a-list-$i")
-      var aList = new ArrayList[Long]();
-      for ( j <- 1 to TEST_COUNT){
+      val aList = new util.ArrayList[Long]()
+      for ( j <- 1 to TEST_COUNT) {
         val newInt = rand.nextInt(200) + 250L
         aList.add(newInt)
       }
-      client.put(wp, newKey, new Bin(listBin, aList));
+      client.put(wp, newKey, new Bin(listBin, aList))
     }
   }
+
+  behavior of "Aerospike List"
 
   it should "read list data" in {
     thingsDF = sqlContext.read.
@@ -106,7 +98,7 @@ class ListTest extends FlatSpec with BeforeAndAfter{
       StructField("key", StringType, nullable = false),
       StructField("last", StringType, nullable = true),
       StructField("first", StringType, nullable = true),
-      StructField(listBin, ArrayType(LongType,true)),
+      StructField(listBin, ArrayType(LongType, containsNull = true)),
       StructField("ttl", IntegerType, nullable = true)
     ))
     val rows = Seq(
@@ -153,6 +145,4 @@ class ListTest extends FlatSpec with BeforeAndAfter{
     val tunrbullList = tunrbull.getList(listBin)
     assert(tunrbullList.get(1) == 2016L)
   }
-
-
 }
